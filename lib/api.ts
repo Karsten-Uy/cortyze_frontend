@@ -1,8 +1,30 @@
 // Thin typed fetch wrapper for the Cortyze backend.
 // Backend URL via NEXT_PUBLIC_API_URL; defaults to http://localhost:8000.
+//
+// All authenticated endpoints expect an Authorization: Bearer <jwt> header
+// with a valid Supabase session token. Pass the access token through
+// `authToken` on each request — get it from supabase.auth.getSession().
+
+import { createSupabaseBrowserClient } from "./supabase-browser";
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+/** Read the current Supabase access token from the browser session, or
+ *  null if the user is signed out. Cheap (reads from cookies). */
+export async function getAccessToken(): Promise<string | null> {
+  try {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function authHeaders(token: string | null | undefined): HeadersInit {
+  return token ? { authorization: `Bearer ${token}` } : {};
+}
 
 export type Goal = "conversion" | "awareness" | "engagement" | "brand_recall";
 
@@ -143,12 +165,40 @@ export const GOAL_WEIGHTS: Record<Goal, Record<RegionKey, number>> = {
   },
 };
 
+/**
+ * Two shapes accepted by /analyze on the backend:
+ *
+ * - **video**: single MP4 URL via `content_url`.
+ * - **post**: 1-20 images via `image_urls`. A single-image post is just
+ *            a 1-element list; a carousel is N. `seconds_per_image`
+ *            controls hold time. At least one of `audio_url` / `caption`
+ *            must be supplied.
+ *
+ * `image` and `text` content types are reserved on the backend but
+ * currently raise NotImplementedError — use `post` instead.
+ */
 export type AnalyzeRequest = {
-  content_url: string;
-  content_type: "video" | "image" | "text";
+  content_type: "video" | "post";
   goal: Goal;
   user_id?: string | null;
   request_id?: string;
+
+  // Video flow
+  content_url?: string;
+
+  // Post flow (1-20 images + optional audio + optional caption)
+  image_urls?: string[];
+  seconds_per_image?: number;
+  audio_url?: string | null;
+  caption?: string | null;
+
+  /** Stage 3: brand / campaign context the user types in alongside the
+   *  upload. Plumbed into the suggestion engine prompt. */
+  additional_context?: string | null;
+  /** Stage 3: optional campaign grouping for the sidebar. */
+  campaign_id?: string | null;
+  /** Stage 3: human-readable label for the sidebar. */
+  title?: string | null;
 };
 
 export type MomentEvent = {
@@ -176,8 +226,12 @@ export type Suggestion = {
   title: string;
   fix: string;
   why: string;
+  /** Real-seconds anchor — populated for video and audio-bearing posts. */
   timestamp_start_s: number | null;
   timestamp_end_s: number | null;
+  /** 1-indexed image position(s) — populated for gallery suggestions. */
+  image_index_start: number | null;
+  image_index_end: number | null;
   examples: string[];
 };
 
@@ -186,10 +240,17 @@ export type BrainReport = {
   region_scores: Record<RegionKey, number>;
   overall_score: number;
   goal: Goal;
+  /** Mirrors AnalyzeRequest.content_type so the UI knows whether this
+   *  report came from video or post analysis without inferring it. */
+  content_type: "video" | "image" | "text" | "post";
   user_id: string | null;
   model_version: string;
   raw_predictions_uri: string | null;
   brain_image_b64: string | null;
+  /** Presigned R2 URL for the rendered brain heatmap PNG. Persisted
+   *  across runs; preferred over `brain_image_b64` when both are set
+   *  (the b64 is only emitted on fresh runs to save a round-trip). */
+  brain_image_uri: string | null;
   elapsed_ms: number;
   /** Per-region per-second scores [0..100], length T (1 entry per second of input). */
   region_timeseries: Record<RegionKey, number[]> | null;
@@ -197,6 +258,75 @@ export type BrainReport = {
   moments: Moment[];
   /** Stage 2: per-region actionable diagnoses, sorted critical → important → minor. */
   suggestions: Suggestion[];
+  // Stage 3 — surfaced from the underlying request.
+  additional_context: string | null;
+  campaign_id: string | null;
+  title: string | null;
+  thumbnail_url: string | null;
+  caption_text: string | null;
+  created_at: string | null;
+  /** Cached overall score under each goal. region_scores are
+   *  goal-independent, so swapping the goal lens is free on the client.
+   *  null on legacy reports created before this field was added. */
+  overall_by_goal: Record<Goal, number> | null;
+  /** Inputs persisted so /regoal can correctly re-fire the suggestion
+   *  engine without losing audio-presence / carousel-shape context. */
+  audio_url: string | null;
+  image_count: number | null;
+  seconds_per_image: number | null;
+};
+
+// ---------- Stage 3: campaigns + sidebar listing + compare + examples ------
+
+export type Campaign = {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+};
+
+export type CampaignSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  run_count: number;
+  last_run_at: string | null;
+};
+
+export type ReportSummary = {
+  request_id: string;
+  title: string | null;
+  thumbnail_url: string | null;
+  overall_score: number;
+  goal: Goal;
+  content_type: "video" | "image" | "text" | "post";
+  campaign_id: string | null;
+  created_at: string;
+};
+
+export type ListReportsResponse = {
+  items: ReportSummary[];
+  next_cursor: string | null;
+};
+
+export type ComparisonResult = {
+  report_a: BrainReport;
+  report_b: BrainReport;
+  overall_delta: number;
+  per_region_delta: Record<RegionKey, number>;
+  winner: "a" | "b" | "tie";
+  llm_summary: string;
+};
+
+export type ExampleAd = {
+  name: string;
+  display_name: string;
+  description: string;
+  source_url: string;
+  license: string;
+  region_scores: Record<RegionKey, number>;
+  overall_by_goal: Record<Goal, number>;
 };
 
 /** Format `seconds` as `M:SS` or `H:MM:SS` for display. */
@@ -215,11 +345,16 @@ export type UploadUrls = {
   content_url: string;
 };
 
-/** Mint a presigned upload URL, then PUT the file directly to object storage. */
+/** Mint a presigned upload URL, then PUT the file directly to object storage.
+ *  Both /upload-url and the PUT itself need the user's session — the PUT
+ *  goes directly to R2 (no auth needed there) but minting requires an
+ *  authenticated caller, so we always pull a fresh token. */
 export async function uploadFile(file: File): Promise<string> {
-  const r = await fetch(`${API_URL}/upload-url?content_type=${encodeURIComponent(file.type || "video/mp4")}`, {
-    method: "POST",
-  });
+  const token = await getAccessToken();
+  const r = await fetch(
+    `${API_URL}/upload-url?content_type=${encodeURIComponent(file.type || "video/mp4")}`,
+    { method: "POST", headers: authHeaders(token) },
+  );
   if (!r.ok) {
     throw new Error(`Failed to mint upload URL: ${r.status} ${await r.text()}`);
   }
@@ -236,15 +371,132 @@ export async function uploadFile(file: File): Promise<string> {
 }
 
 export async function analyze(req: AnalyzeRequest): Promise<BrainReport> {
+  const token = await getAccessToken();
   const r = await fetch(`${API_URL}/analyze`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...authHeaders(token) },
     body: JSON.stringify(req),
   });
   if (!r.ok) {
     const detail = await r.text();
     throw new Error(`Analyze failed: ${r.status} ${detail}`);
   }
+  return r.json();
+}
+
+export async function getReport(requestId: string): Promise<BrainReport> {
+  const token = await getAccessToken();
+  const r = await fetch(`${API_URL}/report/${encodeURIComponent(requestId)}`, {
+    headers: authHeaders(token),
+  });
+  if (!r.ok) throw new Error(`Get report failed: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+export async function listReports(opts: {
+  campaignId?: string | null;
+  limit?: number;
+  cursor?: string | null;
+} = {}): Promise<ListReportsResponse> {
+  const token = await getAccessToken();
+  const params = new URLSearchParams();
+  if (opts.campaignId) params.set("campaign_id", opts.campaignId);
+  if (opts.limit) params.set("limit", String(opts.limit));
+  if (opts.cursor) params.set("cursor", opts.cursor);
+  const url = `${API_URL}/reports${params.toString() ? "?" + params.toString() : ""}`;
+  const r = await fetch(url, { headers: authHeaders(token) });
+  if (!r.ok) throw new Error(`List reports failed: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+export async function listCampaigns(): Promise<CampaignSummary[]> {
+  const token = await getAccessToken();
+  const r = await fetch(`${API_URL}/campaigns`, { headers: authHeaders(token) });
+  if (!r.ok) throw new Error(`List campaigns failed: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+export async function createCampaign(body: {
+  name: string;
+  description?: string | null;
+}): Promise<Campaign> {
+  const token = await getAccessToken();
+  const r = await fetch(`${API_URL}/campaigns`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`Create campaign failed: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+export async function updateCampaign(
+  id: string,
+  body: { name?: string; description?: string | null },
+): Promise<Campaign> {
+  const token = await getAccessToken();
+  const r = await fetch(`${API_URL}/campaigns/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`Update campaign failed: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+export async function deleteCampaign(id: string): Promise<void> {
+  const token = await getAccessToken();
+  const r = await fetch(`${API_URL}/campaigns/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!r.ok && r.status !== 204)
+    throw new Error(`Delete campaign failed: ${r.status} ${await r.text()}`);
+}
+
+/**
+ * Re-run the suggestion engine for an existing report under a new goal,
+ * without re-running TRIBE inference. Creates a NEW report row with a
+ * fresh request_id; the original is untouched.
+ *
+ * Cost: one Anthropic call (~$0.01) when SUGGESTION_LLM_MODE is paid.
+ * Use the cached `overall_by_goal` on the existing report for a free
+ * preview before committing to this call.
+ */
+export async function regoalReport(
+  requestId: string,
+  goal: Goal,
+): Promise<BrainReport> {
+  const token = await getAccessToken();
+  const r = await fetch(
+    `${API_URL}/reports/${encodeURIComponent(requestId)}/regoal`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", ...authHeaders(token) },
+      body: JSON.stringify({ goal }),
+    },
+  );
+  if (!r.ok) throw new Error(`Regoal failed: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+export async function compareReports(
+  requestIdA: string,
+  requestIdB: string,
+): Promise<ComparisonResult> {
+  const token = await getAccessToken();
+  const r = await fetch(`${API_URL}/compare`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify({ request_id_a: requestIdA, request_id_b: requestIdB }),
+  });
+  if (!r.ok) throw new Error(`Compare failed: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+export async function getExample(name: string): Promise<ExampleAd> {
+  const r = await fetch(`${API_URL}/examples/${encodeURIComponent(name)}`);
+  if (!r.ok) throw new Error(`Get example failed: ${r.status} ${await r.text()}`);
   return r.json();
 }
 

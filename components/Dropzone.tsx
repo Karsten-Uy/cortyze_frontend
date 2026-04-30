@@ -4,20 +4,33 @@ import { useCallback, useRef, useState } from "react";
 import { formatBytes } from "@/lib/limits";
 
 type Props = {
-  onFile: (file: File) => void;
+  /** Single-file callback — used unless `multiple=true`. */
+  onFile?: (file: File) => void;
+  /** Multi-file callback — used when `multiple=true`. Receives the
+   *  validated subset (anything over `maxBytes` is filtered + reported). */
+  onFiles?: (files: File[]) => void;
   onError?: (msg: string) => void;
   disabled?: boolean;
   accept?: string;
+  multiple?: boolean;
   /** Hard ceiling — files larger than this are rejected before they reach the consumer. */
   maxBytes?: number;
+  /** Headline text shown inside the dropzone. Default targets video uploads. */
+  label?: string;
+  /** Subline shown below the label. Defaults to a size hint based on `maxBytes`. */
+  subtext?: string;
 };
 
 export function Dropzone({
   onFile,
+  onFiles,
   onError,
   disabled,
   accept = "video/*,image/*",
+  multiple = false,
   maxBytes,
+  label,
+  subtext,
 }: Props) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,6 +38,30 @@ export function Dropzone({
   const handleFiles = useCallback(
     (files: FileList | null) => {
       if (!files || files.length === 0) return;
+
+      if (multiple) {
+        const all = Array.from(files);
+        const accepted: File[] = [];
+        const rejected: File[] = [];
+        for (const f of all) {
+          if (maxBytes && f.size > maxBytes) rejected.push(f);
+          else accepted.push(f);
+        }
+        if (rejected.length > 0) {
+          onError?.(
+            `${rejected.length} file${rejected.length === 1 ? "" : "s"} too large ` +
+              `(max ${formatBytes(maxBytes!)}): ` +
+              rejected
+                .slice(0, 3)
+                .map((f) => f.name)
+                .join(", ") +
+              (rejected.length > 3 ? ", …" : ""),
+          );
+        }
+        if (accepted.length > 0) onFiles?.(accepted);
+        return;
+      }
+
       const file = files[0];
       if (maxBytes && file.size > maxBytes) {
         onError?.(
@@ -32,9 +69,9 @@ export function Dropzone({
         );
         return;
       }
-      onFile(file);
+      onFile?.(file);
     },
-    [onFile, onError, maxBytes],
+    [onFile, onFiles, multiple, onError, maxBytes],
   );
 
   return (
@@ -62,6 +99,7 @@ export function Dropzone({
         ref={inputRef}
         type="file"
         accept={accept}
+        multiple={multiple}
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
@@ -79,12 +117,13 @@ export function Dropzone({
         />
       </svg>
       <p className="text-sm font-medium text-neutral-200">
-        Drop a video here, or click to browse
+        {label ?? "Drop a video here, or click to browse"}
       </p>
       <p className="text-xs text-neutral-500">
-        {maxBytes
-          ? `Max ${formatBytes(maxBytes)} · larger files can be compressed in-browser`
-          : "Direct upload to object storage via presigned URL"}
+        {subtext ??
+          (maxBytes
+            ? `Max ${formatBytes(maxBytes)} · larger files can be compressed in-browser`
+            : "Direct upload to object storage via presigned URL")}
       </p>
     </div>
   );
