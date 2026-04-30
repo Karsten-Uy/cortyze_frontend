@@ -217,14 +217,38 @@ function SuggestionItem({
             )}
             {example && (
               <div className="mt-2 flex gap-3 rounded-lg border border-border bg-surface p-3">
+                {example.thumbnail_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={example.thumbnail_url}
+                    alt={example.display_name}
+                    className="h-24 w-24 shrink-0 rounded-md object-cover"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-md bg-surface-muted text-[10px] text-foreground-subtle">
+                    No preview
+                  </div>
+                )}
                 <div className="flex flex-1 flex-col">
-                  <div className="text-sm font-medium text-foreground">
-                    {example.display_name}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                      {example.display_name}
+                    </span>
+                    {example.content_type && (
+                      <span className="rounded-full bg-surface-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-foreground-subtle">
+                        {example.content_type}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 text-xs text-foreground-muted">
                     {example.description}
                   </p>
-                  <div className="mt-2 flex gap-2 text-[11px] text-foreground-subtle">
+                  {example.caption && (
+                    <p className="mt-1 text-xs italic text-foreground-subtle line-clamp-2">
+                      &ldquo;{example.caption}&rdquo;
+                    </p>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-foreground-subtle">
                     {Object.entries(example.region_scores)
                       .filter(([r]) => r === suggestion.region)
                       .map(([r, score]) => (
@@ -244,9 +268,25 @@ function SuggestionItem({
                     >
                       View source
                     </a>
-                    <span>·</span>
-                    <span>{example.license}</span>
+                    {example.license && (
+                      <>
+                        <span>·</span>
+                        <span>{example.license}</span>
+                      </>
+                    )}
                   </div>
+                  {example.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {example.tags.slice(0, 5).map((t) => (
+                        <span
+                          key={t}
+                          className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] text-accent"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -274,9 +274,13 @@ function BrainImagePanel({
   imageB64: string | null;
   contentType: string;
 }) {
-  // Prefer the persisted R2 URL (works across runs + regoals + history).
-  // Fall back to the inline b64 from a fresh /analyze response.
-  const src = imageUri ?? (imageB64 ? `data:image/png;base64,${imageB64}` : null);
+  // Prefer the inline b64 when available — it's already in memory from
+  // /analyze and avoids any cross-origin / presigned-URL gotchas. Fall
+  // back to the persisted R2 URL for past runs (loaded from DB, where
+  // brain_image_b64 isn't stored).
+  const src = imageB64
+    ? `data:image/png;base64,${imageB64}`
+    : (imageUri ?? null);
   return (
     <div className="card flex flex-col p-3">
       <div className="rounded-xl bg-foreground/95 p-3">

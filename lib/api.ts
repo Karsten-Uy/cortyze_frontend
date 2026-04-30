@@ -327,6 +327,11 @@ export type ExampleAd = {
   license: string;
   region_scores: Record<RegionKey, number>;
   overall_by_goal: Record<Goal, number>;
+  // Stage 2 enrichments — null/empty on legacy manifests.
+  thumbnail_url: string | null;
+  tags: string[];
+  content_type: "video" | "post" | "image" | null;
+  caption: string | null;
 };
 
 /** Format `seconds` as `M:SS` or `H:MM:SS` for display. */

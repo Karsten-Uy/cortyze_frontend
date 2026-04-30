@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { formatBytes } from "@/lib/limits";
 
 type Props = {
@@ -33,7 +33,6 @@ export function Dropzone({
   subtext,
 }: Props) {
   const [dragging, setDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = useCallback(
     (files: FileList | null) => {
@@ -75,7 +74,7 @@ export function Dropzone({
   );
 
   return (
-    <div
+    <label
       onDragOver={(e) => {
         e.preventDefault();
         if (!disabled) setDragging(true);
@@ -86,7 +85,6 @@ export function Dropzone({
         setDragging(false);
         if (!disabled) handleFiles(e.dataTransfer.files);
       }}
-      onClick={() => !disabled && inputRef.current?.click()}
       className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 text-center transition ${
         disabled
           ? "cursor-not-allowed border-neutral-800 bg-neutral-950 opacity-50"
@@ -95,11 +93,14 @@ export function Dropzone({
             : "border-neutral-700 bg-neutral-900 hover:border-neutral-500"
       }`}
     >
+      {/* Native <label>+nested <input> bridges click→picker without a manual
+          .click() call, which used to bubble back up and open the picker
+          twice. */}
       <input
-        ref={inputRef}
         type="file"
         accept={accept}
         multiple={multiple}
+        disabled={disabled}
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
@@ -125,6 +126,6 @@ export function Dropzone({
             ? `Max ${formatBytes(maxBytes)} · larger files can be compressed in-browser`
             : "Direct upload to object storage via presigned URL")}
       </p>
-    </div>
+    </label>
   );
 }
