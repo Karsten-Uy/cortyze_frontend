@@ -154,6 +154,12 @@ export function Sidebar() {
           label="Campaigns"
           icon="folder"
         />
+        <NavItem
+          href="/lab"
+          pathname={pathname}
+          label="Lab (preview)"
+          icon="beaker"
+        />
       </nav>
 
       {/* History */}
@@ -289,7 +295,7 @@ function NavItem({
   href: string;
   pathname: string;
   label: string;
-  icon: "run" | "compare" | "folder";
+  icon: "run" | "compare" | "folder" | "beaker";
 }) {
   const active =
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -308,7 +314,7 @@ function NavItem({
   );
 }
 
-function NavIcon({ kind }: { kind: "run" | "compare" | "folder" }) {
+function NavIcon({ kind }: { kind: "run" | "compare" | "folder" | "beaker" }) {
   const stroke = "currentColor";
   if (kind === "run") {
     return (
@@ -322,6 +328,19 @@ function NavIcon({ kind }: { kind: "run" | "compare" | "folder" }) {
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
         <rect x="2" y="3" width="5" height="10" rx="1" stroke={stroke} strokeWidth={1.5} fill="none" />
         <rect x="9" y="3" width="5" height="10" rx="1" stroke={stroke} strokeWidth={1.5} fill="none" />
+      </svg>
+    );
+  }
+  if (kind === "beaker") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+        <path
+          d="M6 2h4M6.5 2v4l-3 6a1 1 0 0 0 1 1.5h7a1 1 0 0 0 1-1.5l-3-6V2"
+          stroke={stroke}
+          strokeWidth={1.5}
+          fill="none"
+          strokeLinejoin="round"
+        />
       </svg>
     );
   }
