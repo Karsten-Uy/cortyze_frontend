@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/Badge";
 import { BrainAtlas } from "@/components/BrainAtlas";
+import { ExampleAdPlayer } from "@/components/ExampleAdPlayer";
 import { fetchExample } from "@/lib/api";
 import {
   REGION_INFO,
@@ -520,22 +521,24 @@ function SuggestionCard({
             gap: 12,
           }}
         >
-          <div style={{ display: "flex", gap: 14 }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "stretch" }}>
             <div
               style={{
-                width: 110,
+                width: 160,
                 flexShrink: 0,
+                alignSelf: "stretch",
                 background: "var(--sand)",
                 borderRadius: 10,
-                padding: 8,
+                padding: 10,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 6,
+                justifyContent: "center",
+                gap: 8,
               }}
             >
               <BrainAtlas
-                size={92}
+                size={140}
                 pulseKey={region.key}
                 showBadges={false}
               />
@@ -620,6 +623,10 @@ function LibraryReferenceCard({
   );
   const regionLabel =
     REGION_META.find((m) => m.key === area)?.label ?? area;
+  // Peak window for this region in the example ad — keyed by the
+  // legacy 8-region label since that's how reference manifests are
+  // indexed. Falls back to the static thumbnail when missing.
+  const peakWindow = ad.peak_windows?.[legacyKey];
 
   return (
     <div
@@ -629,44 +636,52 @@ function LibraryReferenceCard({
         borderRadius: 8,
         padding: "10px 12px",
         display: "flex",
-        alignItems: "center",
-        gap: 10,
+        alignItems: "flex-start",
+        gap: 12,
       }}
     >
-      <div
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 6,
-          background: ad.thumbnail_url ? "transparent" : "#D9D5CE",
-          display: "grid",
-          placeItems: "center",
-          flexShrink: 0,
-          overflow: "hidden",
-        }}
-      >
-        {ad.thumbnail_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={ad.thumbnail_url}
-            alt={ad.display_name}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        ) : (
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#888"
-            strokeWidth="1.5"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="9" cy="9" r="2" />
-            <path d="M21 15l-5-5L5 21" />
-          </svg>
-        )}
-      </div>
+      {peakWindow && ad.source_url ? (
+        <ExampleAdPlayer
+          src={ad.source_url}
+          startS={peakWindow[0]}
+          endS={peakWindow[1]}
+        />
+      ) : (
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 6,
+            background: ad.thumbnail_url ? "transparent" : "#D9D5CE",
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+            overflow: "hidden",
+          }}
+        >
+          {ad.thumbnail_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={ad.thumbnail_url}
+              alt={ad.display_name}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#888"
+              strokeWidth="1.5"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="9" cy="9" r="2" />
+              <path d="M21 15l-5-5L5 21" />
+            </svg>
+          )}
+        </div>
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: "var(--ink)" }}>
           {ad.display_name}
@@ -677,9 +692,6 @@ function LibraryReferenceCard({
               fontSize: 10,
               color: "#888",
               marginTop: 1,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
             }}
           >
             {ad.description}

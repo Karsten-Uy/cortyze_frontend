@@ -1,0 +1,154 @@
+"use client";
+
+// Embeds the suggested example ad and seeks it to the section where
+// the suggestion's region peaks. Handles two source-URL shapes:
+//
+//   - YouTube watch / short URLs → <iframe> via youtube.com/embed/<id>
+//     with `?start=&end=&autoplay=1&mute=1&playsinline=1`. YouTube's
+//     embed doesn't support clean segment looping without the IFrame
+//     JS SDK, so playback runs forward from the peak (no loop).
+//
+//   - Anything else (R2 MP4, etc.) → native <video> looping the
+//     [start, end] segment.
+
+type Props = {
+  src: string;
+  startS: number;
+  endS: number;
+};
+
+function formatMSS(s: number): string {
+  const total = Math.max(0, Math.floor(s));
+  const m = Math.floor(total / 60);
+  const sec = total % 60;
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
+function youtubeId(url: string): string | null {
+  // youtu.be/<id> | youtube.com/watch?v=<id> | youtube.com/embed/<id> |
+  // youtube.com/shorts/<id>. Returns null when none match.
+  const patterns = [
+    /youtu\.be\/([A-Za-z0-9_-]{6,})/,
+    /[?&]v=([A-Za-z0-9_-]{6,})/,
+    /youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/,
+    /youtube\.com\/shorts\/([A-Za-z0-9_-]{6,})/,
+  ];
+  for (const re of patterns) {
+    const m = url.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+const PLAYER_WIDTH = 280;
+const PLAYER_HEIGHT = Math.round((PLAYER_WIDTH * 9) / 16);
+
+export function ExampleAdPlayer({ src, startS, endS }: Props) {
+  const ytId = youtubeId(src);
+  const caption = (
+    <div
+      className="mono"
+      style={{
+        fontSize: 10,
+        color: "var(--ink-3)",
+        letterSpacing: "0.04em",
+      }}
+    >
+      {formatMSS(startS)}–{formatMSS(endS)} · peak moment
+    </div>
+  );
+
+  if (ytId) {
+    const start = Math.floor(startS);
+    const end = Math.ceil(endS);
+    const params = new URLSearchParams({
+      start: String(start),
+      end: String(end),
+      autoplay: "1",
+      mute: "1",
+      playsinline: "1",
+      controls: "0",         // hides the bottom bar (the "LAY'S | Last…" title chip lives there)
+      modestbranding: "1",   // smaller YouTube watermark
+      rel: "0",              // no related-videos grid at end
+      iv_load_policy: "3",   // hide annotations
+      disablekb: "1",        // no keyboard chrome
+      fs: "0",               // no fullscreen button
+      cc_load_policy: "0",   // no auto-CC chip
+      showinfo: "0",         // legacy hide-title (still respected on some clients)
+    });
+    // youtube-nocookie removes the cookie banner overlay and tends to
+    // render with less chrome than the youtube.com host.
+    const embed = `https://www.youtube-nocookie.com/embed/${ytId}?${params.toString()}`;
+    return (
+      <div
+        style={{
+          width: PLAYER_WIDTH,
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        <iframe
+          src={embed}
+          width={PLAYER_WIDTH}
+          height={PLAYER_HEIGHT}
+          allow="autoplay; encrypted-media; picture-in-picture"
+          // YouTube embed doesn't expose a "fullscreen requested" event
+          // without the IFrame API, but the user can still go fullscreen
+          // via the player's own UI.
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+          style={{
+            border: "none",
+            borderRadius: 10,
+            background: "#000",
+            display: "block",
+          }}
+          title="Suggested ad — peak moment"
+        />
+        {caption}
+      </div>
+    );
+  }
+
+  // Native <video> fallback: loops within [startS, endS] muted-autoplay.
+  return (
+    <div
+      style={{
+        width: PLAYER_WIDTH,
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+      }}
+    >
+      <video
+        src={src}
+        muted
+        autoPlay
+        playsInline
+        preload="metadata"
+        loop={false}
+        onLoadedMetadata={(e) => {
+          e.currentTarget.currentTime = startS;
+          e.currentTarget.play().catch(() => {});
+        }}
+        onTimeUpdate={(e) => {
+          const v = e.currentTarget;
+          if (v.currentTime >= endS - 0.05 || v.currentTime < startS - 0.05) {
+            v.currentTime = startS;
+            v.play().catch(() => {});
+          }
+        }}
+        style={{
+          width: "100%",
+          aspectRatio: "16 / 9",
+          background: "#000",
+          borderRadius: 10,
+          objectFit: "cover",
+          display: "block",
+        }}
+      />
+      {caption}
+    </div>
+  );
+}

@@ -22,9 +22,9 @@ const VIEW_H = 588;
 const REGIONS: Record<RegionKey, { rs: string; rf: string }> = {
   memory:    { rs: "rgb(208,50,60)",  rf: "rgba(208,50,60,0.58)" },
   emotion:   { rs: "rgb(60,168,80)",  rf: "rgba(60,168,80,0.6)" },
-  attention: { rs: "rgb(115,130,65)", rf: "rgba(150,165,90,0.4)" },
+  attention: { rs: "rgb(80,95,40)",   rf: "rgba(110,130,55,0.7)" },
   language:  { rs: "rgb(145,80,110)", rf: "rgba(180,110,140,0.42)" },
-  face:      { rs: "rgb(165,130,60)", rf: "rgba(195,160,85,0.32)" },
+  face:      { rs: "rgb(120,90,30)",  rf: "rgba(155,115,45,0.7)" },
   reward:    { rs: "rgb(50,70,180)",  rf: "rgba(50,70,180,0.75)" },
 };
 

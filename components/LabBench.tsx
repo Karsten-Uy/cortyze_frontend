@@ -21,6 +21,9 @@ type MediaFile = {
   kind: "Video" | "Image";
   size: string;
   url: string;
+  // R2 object key; round-tripped to /runs so the API can re-presign
+  // a fresh `media_url` after the original presigned URL TTL elapses.
+  objectKey: string;
 };
 
 // Mirrors the backend's allowlist in api/routes/upload.py.
@@ -305,6 +308,7 @@ function MediaDropper({
         kind: inferKind(file.type),
         size: formatBytes(file.size),
         url: minted.get_url,
+        objectKey: minted.object_key,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");

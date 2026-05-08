@@ -80,13 +80,16 @@ export default function CortyzePage() {
   async function handleRun(input: LabBenchInput) {
     setSubmitError(null);
     try {
+      const kind: "Video" | "Image" =
+        input.media?.kind === "Image" ? "Image" : "Video";
       const { run_id } = await createRun({
         name: input.name,
         goal: input.goal,
         brief: input.brief,
         caption: input.caption,
         media_url: input.media?.url ?? null,
-        kind: input.media?.kind === "Image" ? "Image" : "Video",
+        media_object_key: input.media?.objectKey ?? null,
+        kind,
       });
       setCurrentRunId(run_id);
       setView("analyzing");

@@ -80,6 +80,10 @@ export type Suggestion = {
   reference: Reference | null;
   // Slugs of registered library examples; lazy-fetched on card expand.
   examples?: string[];
+  // Window (seconds) in the user's clip where this region peaks. Drives
+  // the per-suggestion clip player. `null` for image runs / older runs.
+  peak_start_s?: number | null;
+  peak_end_s?: number | null;
 };
 
 // Matches the backend's ExampleAd Pydantic model (api/routes/examples.py).
@@ -95,6 +99,12 @@ export type ExampleAd = {
   tags: string[];
   content_type: string | null;
   caption: string | null;
+  // Total clip duration in seconds, or null for image-only ads.
+  duration_s: number | null;
+  // {legacy_region_key: [peak_start_s, peak_end_s]}. Drives the embedded
+  // player's start time so the user sees the section of the example ad
+  // where this region peaks.
+  peak_windows: Record<string, [number, number]>;
 };
 
 export type SuggestionPlan = {
@@ -114,6 +124,7 @@ export type RunRecord = {
   brief: string;
   caption: string;
   media_url: string | null;
+  media_object_key: string | null;
   kind: "Video" | "Image";
   status: RunStatus;
   created_at: string;
@@ -136,6 +147,9 @@ export type CreateRunInput = {
   brief?: string;
   caption?: string;
   media_url?: string | null;
+  // R2 object key from /upload-url; lets GET /runs/:id re-presign
+  // a fresh media_url after the original 1h TTL elapses.
+  media_object_key?: string | null;
   kind?: "Video" | "Image";
 };
 
@@ -151,6 +165,9 @@ export type Profile = {
 export type UploadUrlResponse = {
   put_url: string;
   get_url: string;
+  // Stable R2 key — round-trip on POST /runs so the API can re-presign
+  // a fresh `media_url` after the original 1h TTL elapses.
+  object_key: string;
   content_type: string;
 };
 
