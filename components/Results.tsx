@@ -123,6 +123,26 @@ export function Results({
           </button>
         </div>
       )}
+
+      <div
+        style={{
+          marginTop: 32,
+          fontSize: 10,
+          color: "var(--ink-3)",
+          textAlign: "center",
+        }}
+      >
+        Brain illustration:{" "}
+        <a
+          href="https://smart.servier.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "inherit", textDecoration: "underline" }}
+        >
+          SMART by Servier
+        </a>{" "}
+        · CC BY 3.0
+      </div>
     </div>
   );
 }

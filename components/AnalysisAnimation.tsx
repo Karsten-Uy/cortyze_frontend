@@ -167,7 +167,16 @@ export function AnalysisAnimation({
             />
           </div>
           <div style={{ fontSize: 11, color: "var(--ink-3)" }}>
-            Powered by TRIBE v2
+            Brain illustration:{" "}
+            <a
+              href="https://smart.servier.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "inherit", textDecoration: "underline" }}
+            >
+              SMART by Servier
+            </a>{" "}
+            · CC BY 3.0
           </div>
         </>
       ) : (
