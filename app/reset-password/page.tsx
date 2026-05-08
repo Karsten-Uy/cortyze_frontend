@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import {
+  AuthShell,
+  FieldLabel,
+  FormError,
+  FormNotice,
+  authButton,
+  authInput,
+} from "@/components/auth/AuthShell";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
-/**
- * Step 1 of password recovery: enter email, get a reset link emailed.
- * Step 2 (the actual new-password entry) is wired by Supabase to a
- * recovery URL that lands the user back here in a session-recovery
- * mode — handled inline below.
- */
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -43,68 +45,62 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="card w-full max-w-md p-8">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Reset your password
-        </h1>
-        <p className="mt-1 text-sm text-foreground-muted">
-          We&apos;ll email you a link to choose a new password.
-        </p>
-
-        {sent ? (
-          <div className="mt-6 rounded-lg border border-good/30 bg-good-soft px-3 py-3 text-sm text-good">
-            Check your inbox at <strong>{email}</strong>. The link will sign
-            you in and let you set a new password.
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-foreground"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-foreground-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            {error && (
-              <div className="rounded-lg border border-poor/30 bg-poor-soft px-3 py-2 text-sm text-poor">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {busy ? "Sending…" : "Send reset link"}
-            </button>
-          </form>
-        )}
-
-        <p className="mt-6 text-center text-sm text-foreground-muted">
+    <AuthShell
+      title="Reset your password"
+      subtitle="We'll email you a link to choose a new password."
+      footer={
+        <>
           Remembered it?{" "}
-          <Link
-            href="/login"
-            className="font-medium text-accent hover:text-accent-hover"
-          >
+          <Link href="/login" style={{ color: "var(--coral)", fontWeight: 500 }}>
             Back to sign in
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {sent ? (
+        <FormNotice tone="green">
+          Check your inbox at <strong>{email}</strong>. The link will sign you in
+          and let you set a new password.
+        </FormNotice>
+      ) : (
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: 14 }}
+        >
+          <div>
+            <FieldLabel>Email</FieldLabel>
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              style={authInput}
+            />
+          </div>
+
+          {error && <FormError>{error}</FormError>}
+
+          <button
+            type="submit"
+            disabled={busy}
+            style={{
+              ...authButton,
+              opacity: busy ? 0.6 : 1,
+              cursor: busy ? "wait" : "pointer",
+            }}
+            onMouseEnter={(e) => {
+              if (!busy) e.currentTarget.style.background = "var(--coral-2)";
+            }}
+            onMouseLeave={(e) => {
+              if (!busy) e.currentTarget.style.background = "var(--coral)";
+            }}
+          >
+            {busy ? "Sending…" : "Send reset link"}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   );
 }
