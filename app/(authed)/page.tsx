@@ -5,13 +5,19 @@ import { useCallback, useEffect, useState } from "react";
 
 import { AnalysisAnimation } from "@/components/AnalysisAnimation";
 import { AppSidebar } from "@/components/AppSidebar";
-import { LabBench, type LabBenchInput } from "@/components/LabBench";
+import {
+  LabBench,
+  type LabBenchInitialValues,
+  type LabBenchInput,
+  type MediaFile,
+} from "@/components/LabBench";
 import { NavBar } from "@/components/NavBar";
 import { Results } from "@/components/Results";
 import {
   ApiError,
   createRun,
   getMe,
+  getRun,
   listRuns,
   signOut,
   type PastRun,
@@ -29,6 +35,16 @@ export default function CortyzePage() {
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<SuggestionPlan | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Drives the mobile-only drawer behavior — desktop sidebar ignores this.
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  // Desktop collapse/expand state. Lifted here so Lab-bench / Results
+  // clicks (and past-run selection) can auto-collapse alongside.
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  // Pre-fills the LabBench form when the user clicks "Edit & re-score"
+  // on the Results view. Cleared after a successful submit so the next
+  // visit to the bench from a fresh entry point starts blank.
+  const [benchInitialValues, setBenchInitialValues] =
+    useState<LabBenchInitialValues | null>(null);
 
   const refreshPastRuns = useCallback(async () => {
     try {
@@ -92,6 +108,9 @@ export default function CortyzePage() {
         kind,
       });
       setCurrentRunId(run_id);
+      // Drop any "Edit & re-score" pre-fill now that a new run has
+      // been kicked off — next visit to the bench starts blank.
+      setBenchInitialValues(null);
       setView("analyzing");
     } catch (err) {
       const msg =
@@ -116,12 +135,91 @@ export default function CortyzePage() {
     setView("bench");
   }
 
-  function handleEdit() {
+  async function handleEdit() {
+    // Fetch the run BEFORE switching views so LabBench mounts with the
+    // correct initialValues on first render — useState initializers
+    // don't re-run when props change later, so a post-mount update
+    // would leave the form blank until the user types.
+    if (currentRunId) {
+      try {
+        const record = await getRun(currentRunId);
+        // Reuse the same R2 object on resubmit (no re-upload) when
+        // both the URL and the stable key are present. The clip lives
+        // 7 days under the bucket lifecycle rule; if it's been
+        // garbage-collected, /runs/:id returns media_url=null and the
+        // user falls back to the dropzone naturally.
+        const reusedMedia: MediaFile | null =
+          record.media_url && record.media_object_key
+            ? {
+                name: `Reused from "${record.name}"`,
+                kind: record.kind,
+                size: "—",
+                url: record.media_url,
+                objectKey: record.media_object_key,
+              }
+            : null;
+        setBenchInitialValues({
+          name: record.name,
+          goal: record.goal,
+          brief: record.brief ?? "",
+          caption: record.caption ?? "",
+          media: reusedMedia,
+        });
+      } catch (err) {
+        // Pre-fill is best-effort; bench will just be blank on failure.
+        console.warn("Edit & re-score pre-fill failed:", err);
+        setBenchInitialValues(null);
+      }
+    } else {
+      setBenchInitialValues(null);
+    }
     setView("bench");
   }
 
   function handleNavSelect(tab: "bench" | "results") {
     setView(tab);
+    // Only collapse the sidebar on Lab bench. Results keeps it open so
+    // the user can keep browsing past runs without re-opening it.
+    if (tab === "bench") {
+      setMobileSidebarOpen(false);
+      setSidebarExpanded(false);
+      // Going to Lab bench via the nav (vs. via Edit & re-score) means
+      // the user wants a blank slate for a brand-new run.
+      setBenchInitialValues(null);
+    }
+  }
+
+  // Loading the full run record happens lazily on click — sidebar PastRun
+  // entries don't carry the SuggestionPlan, only the score/date/kind.
+  async function handleSelectPastRun(runId: string) {
+    setCurrentRunId(runId);
+    setSubmitError(null);
+    // Sidebar stays open intentionally — user only closes via the
+    // hamburger or by navigating to Lab bench.
+    try {
+      const record = await getRun(runId);
+      if (record.status === "failed") {
+        setSubmitError(record.error ?? "Run failed");
+        setView("bench");
+        return;
+      }
+      if (record.result) {
+        setCurrentPlan(record.result);
+        setView("results");
+      } else {
+        // Still in flight — fall back to the analyzing view, which will
+        // poll until completion via AnalysisAnimation's waitForRun.
+        setView("analyzing");
+      }
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to load run";
+      setSubmitError(msg);
+    }
   }
 
   const navTab: "bench" | "results" = view === "bench" ? "bench" : "results";
@@ -133,13 +231,18 @@ export default function CortyzePage() {
         onSelect={handleNavSelect}
         profile={profile}
         onSignOut={handleSignOut}
+        onOpenSidebar={() => setMobileSidebarOpen(true)}
       />
 
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         <AppSidebar
           runs={pastRuns}
           currentId={currentRunId}
-          onSelect={(id) => setCurrentRunId(id)}
+          onSelect={handleSelectPastRun}
+          expanded={sidebarExpanded}
+          onExpandedChange={setSidebarExpanded}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
         />
         <main
           style={{
@@ -150,7 +253,11 @@ export default function CortyzePage() {
           }}
         >
           {view === "bench" && (
-            <LabBench onRun={handleRun} initialError={submitError} />
+            <LabBench
+              onRun={handleRun}
+              initialError={submitError}
+              initialValues={benchInitialValues}
+            />
           )}
           {view === "analyzing" && currentRunId && (
             <AnalysisAnimation

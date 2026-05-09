@@ -11,11 +11,13 @@ export function NavBar({
   onSelect,
   profile,
   onSignOut,
+  onOpenSidebar,
 }: {
   active: Tab;
   onSelect: (tab: Tab) => void;
   profile?: Profile | null;
   onSignOut?: () => void | Promise<void>;
+  onOpenSidebar?: () => void;
 }) {
   return (
     <nav
@@ -28,16 +30,50 @@ export function NavBar({
         flexShrink: 0,
       }}
     >
-      <div
-        className="serif"
-        style={{
-          fontSize: 16,
-          fontWeight: 500,
-          color: "var(--ink)",
-          letterSpacing: "-0.01em",
-        }}
-      >
-        cortyze
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {onOpenSidebar && (
+          <button
+            onClick={onOpenSidebar}
+            aria-label="Open past runs"
+            className="cortyze-mobile-only"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: "none",
+              background: "transparent",
+              color: "var(--ink-2)",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            >
+              <path d="M3 5h12" />
+              <path d="M3 9h12" />
+              <path d="M3 13h12" />
+            </svg>
+          </button>
+        )}
+        <div
+          className="serif"
+          style={{
+            fontSize: 16,
+            fontWeight: 500,
+            color: "var(--ink)",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          cortyze
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 4 }}>

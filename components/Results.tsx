@@ -257,7 +257,10 @@ function BreakdownCard({ regions }: { regions: RegionScore[] }) {
   }, [openKey]);
 
   return (
-    <div className="card" style={{ flex: 1, padding: 20, minWidth: 360 }}>
+    <div
+      className="card"
+      style={{ flex: "1 1 320px", padding: 20, minWidth: 0 }}
+    >
       <div className="caption" style={{ marginBottom: 12 }}>
         What&apos;s driving your score
       </div>
@@ -541,7 +544,14 @@ function SuggestionCard({
             gap: 12,
           }}
         >
-          <div style={{ display: "flex", gap: 14, alignItems: "stretch" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 14,
+              alignItems: "stretch",
+              flexWrap: "wrap",
+            }}
+          >
             <div
               style={{
                 width: 160,
@@ -587,7 +597,8 @@ function SuggestionCard({
 
             <div
               style={{
-                flex: 1,
+                flex: "1 1 220px",
+                minWidth: 0,
                 fontSize: 12,
                 color: "var(--ink-2)",
                 lineHeight: 1.55,
@@ -650,6 +661,7 @@ function LibraryReferenceCard({
 
   return (
     <div
+      className="cortyze-example-card"
       style={{
         marginTop: 10,
         background: "var(--sand)",
@@ -658,6 +670,7 @@ function LibraryReferenceCard({
         display: "flex",
         alignItems: "flex-start",
         gap: 12,
+        flexWrap: "wrap",
       }}
     >
       {peakWindow && ad.source_url ? (

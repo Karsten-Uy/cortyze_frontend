@@ -40,8 +40,10 @@ function youtubeId(url: string): string | null {
   return null;
 }
 
-const PLAYER_WIDTH = 280;
-const PLAYER_HEIGHT = Math.round((PLAYER_WIDTH * 9) / 16);
+// Caps the embed at 280×158 on wide screens but lets it shrink to fill
+// the available width when the suggestion card wraps onto a narrow
+// column. The 16:9 aspect-ratio is preserved via CSS.
+const PLAYER_MAX_WIDTH = 280;
 
 export function ExampleAdPlayer({ src, startS, endS }: Props) {
   const ytId = youtubeId(src);
@@ -81,8 +83,11 @@ export function ExampleAdPlayer({ src, startS, endS }: Props) {
     const embed = `https://www.youtube-nocookie.com/embed/${ytId}?${params.toString()}`;
     return (
       <div
+        className="cortyze-example-card-player"
         style={{
-          width: PLAYER_WIDTH,
+          width: "100%",
+          maxWidth: PLAYER_MAX_WIDTH,
+          flex: "1 1 200px",
           display: "flex",
           flexDirection: "column",
           gap: 4,
@@ -90,8 +95,6 @@ export function ExampleAdPlayer({ src, startS, endS }: Props) {
       >
         <iframe
           src={embed}
-          width={PLAYER_WIDTH}
-          height={PLAYER_HEIGHT}
           allow="autoplay; encrypted-media; picture-in-picture"
           // YouTube embed doesn't expose a "fullscreen requested" event
           // without the IFrame API, but the user can still go fullscreen
@@ -103,6 +106,8 @@ export function ExampleAdPlayer({ src, startS, endS }: Props) {
             borderRadius: 10,
             background: "#000",
             display: "block",
+            width: "100%",
+            aspectRatio: "16 / 9",
           }}
           title="Suggested ad — peak moment"
         />
@@ -114,8 +119,11 @@ export function ExampleAdPlayer({ src, startS, endS }: Props) {
   // Native <video> fallback: loops within [startS, endS] muted-autoplay.
   return (
     <div
+      className="cortyze-example-card-player"
       style={{
-        width: PLAYER_WIDTH,
+        width: "100%",
+        maxWidth: PLAYER_MAX_WIDTH,
+        flex: "1 1 200px",
         display: "flex",
         flexDirection: "column",
         gap: 4,

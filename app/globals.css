@@ -154,3 +154,61 @@ textarea {
 .scale-in {
   animation: scaleIn 380ms ease both;
 }
+
+/* AppSidebar — collapsed by default on desktop (icon-only column with a
+   hamburger expander, à la Gemini); fully hidden on mobile so the main
+   content gets the full viewport width. The mobile NavBar hamburger
+   re-opens it as a fixed-position drawer over the content. */
+.cortyze-mobile-only {
+  display: none;
+}
+@media (max-width: 640px) {
+  .cortyze-sidebar {
+    display: none !important;
+  }
+  .cortyze-sidebar.is-mobile-open {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    max-width: 85vw;
+    z-index: 50;
+    background: var(--cream);
+    box-shadow: 0 0 32px rgba(0, 0, 0, 0.18);
+    animation: slideInLeft 220ms ease both;
+  }
+  .cortyze-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.32);
+    z-index: 49;
+    animation: fadeIn 180ms ease both;
+  }
+  .cortyze-mobile-only {
+    display: inline-flex;
+  }
+}
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* LibraryReferenceCard — side-by-side video + text-block on desktop;
+   stack vertically on mobile so the title/description aren't crushed
+   into a sliver next to the embed. */
+@media (max-width: 640px) {
+  .cortyze-example-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .cortyze-example-card .cortyze-example-card-player {
+    max-width: 100% !important;
+    flex-basis: auto !important;
+  }
+}

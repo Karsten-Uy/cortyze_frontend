@@ -16,7 +16,7 @@ export type LabBenchInput = {
   media: MediaFile | null;
 };
 
-type MediaFile = {
+export type MediaFile = {
   name: string;
   kind: "Video" | "Image";
   size: string;
@@ -40,18 +40,37 @@ function inferKind(mime: string): "Video" | "Image" {
   return mime.startsWith("video/") ? "Video" : "Image";
 }
 
+// Subset of LabBenchInput suitable for pre-filling the form when the
+// user clicks "Edit & re-score" on the Results page. `media` carries
+// over the previous run's R2 object so the user can resubmit without
+// re-uploading; the underlying object lives 7 days (R2 lifecycle) and
+// the API re-presigns the URL on every /runs/:id read.
+export type LabBenchInitialValues = {
+  name?: string;
+  goal?: GoalKey;
+  brief?: string;
+  caption?: string;
+  media?: MediaFile | null;
+};
+
 export function LabBench({
   onRun,
   initialError = null,
+  initialValues,
 }: {
   onRun: (input: LabBenchInput) => Promise<void> | void;
   initialError?: string | null;
+  initialValues?: LabBenchInitialValues | null;
 }) {
-  const [name, setName] = useState("");
-  const [goalKey, setGoalKey] = useState<GoalKey>(GOAL_OPTIONS[0].key);
-  const [brief, setBrief] = useState("");
-  const [caption, setCaption] = useState("");
-  const [media, setMedia] = useState<MediaFile | null>(null);
+  const [name, setName] = useState(initialValues?.name ?? "");
+  const [goalKey, setGoalKey] = useState<GoalKey>(
+    initialValues?.goal ?? GOAL_OPTIONS[0].key,
+  );
+  const [brief, setBrief] = useState(initialValues?.brief ?? "");
+  const [caption, setCaption] = useState(initialValues?.caption ?? "");
+  const [media, setMedia] = useState<MediaFile | null>(
+    initialValues?.media ?? null,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(initialError);
 
