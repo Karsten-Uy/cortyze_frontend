@@ -97,7 +97,12 @@ export function LabBench({
         flex: 1,
         overflowY: "auto",
         display: "flex",
-        alignItems: "center",
+        // `safe center` keeps the form vertically centered when there's
+        // room, but falls back to top-aligned (and scrollable from the
+        // top) when the viewport is shorter than the form. Plain
+        // `center` would push the form's top off-screen above the
+        // scroll origin on short viewports.
+        alignItems: "safe center",
         justifyContent: "center",
         padding: "40px 28px",
       }}
