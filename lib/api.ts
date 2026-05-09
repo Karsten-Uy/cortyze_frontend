@@ -131,6 +131,10 @@ export type RunRecord = {
   completed_at: string | null;
   result: SuggestionPlan | null;
   error: string | null;
+  // Set when the run was started via a "Try a sample" card; null for
+  // real uploads. Lets the demo build restore the same sample after
+  // an Edit & re-score round-trip.
+  demo_id: string | null;
 };
 
 export type PastRun = {
@@ -151,6 +155,50 @@ export type CreateRunInput = {
   // a fresh media_url after the original 1h TTL elapses.
   media_object_key?: string | null;
   kind?: "Video" | "Image";
+  // Set when the user clicked a "Try a sample" card on the Lab bench.
+  // Backend short-circuits the real pipeline and loads the canned plan
+  // from data/demo_runs/<demo_id>.json.
+  demo_id?: string | null;
+};
+
+// Matches services/demo.DemoSummary — surface for the Lab-bench "Try
+// a sample" cards. The full canned plan is fetched server-side after
+// `createRun({demo_id})` lands in the orchestrator.
+export type DemoSummary = {
+  demo_id: string;
+  label: string;
+  tagline: string;
+  thumbnail_url: string;
+  kind: "Video" | "Image";
+  form_defaults: {
+    name: string;
+    goal: GoalKey;
+    brief: string;
+    caption: string;
+  };
+  // Source URL (typically YouTube) for the sample clip. Used by the
+  // Lab-bench sample-card thumbnail to open the original in a new tab.
+  media_url: string | null;
+};
+
+// Full demo payload (including the canned plan) — fetched once per demo
+// by the Compare page so it can render all 3 plans side-by-side without
+// triggering 3 fake runs through the orchestrator.
+export type DemoRun = DemoSummary & {
+  media_url: string | null;
+  media_object_key: string | null;
+  plan: SuggestionPlan;
+};
+
+// Hand-written narrative for the 3-demo comparison. Keys in
+// `per_region_winners` are RegionKey strings; values are demo_ids.
+// `demo_takeaways` is keyed by demo_id.
+export type ComparisonNarrative = {
+  headline: string;
+  winner_demo_id: string;
+  subhead: string;
+  per_region_winners: Record<RegionKey, string>;
+  demo_takeaways: Record<string, string[]>;
 };
 
 export type Profile = {
@@ -262,6 +310,29 @@ export async function getRun(runId: string): Promise<RunRecord> {
 
 export async function listRuns(limit = 20): Promise<PastRun[]> {
   return request<PastRun[]>(`/runs?limit=${limit}`);
+}
+
+// "Try a sample" cards on the Lab bench. Public endpoint; safe to
+// call without a session.
+export async function listDemos(): Promise<DemoSummary[]> {
+  return request<DemoSummary[]>("/demos");
+}
+
+// Full demo payload — used by the Compare page to load all 3 plans
+// in parallel (Promise.all over the 3 demo_ids).
+export async function getDemoRun(demoId: string): Promise<DemoRun> {
+  return request<DemoRun>(`/demos/${encodeURIComponent(demoId)}`);
+}
+
+// Hand-written copy for a pairwise demo comparison. The Compare page
+// falls back to a deterministic delta-based narrative if this call
+// fails (lib/compareNarrative.ts). Order-independent on the backend.
+export async function getComparisonNarrative(
+  a: string,
+  b: string,
+): Promise<ComparisonNarrative> {
+  const params = new URLSearchParams({ a, b });
+  return request<ComparisonNarrative>(`/demos/comparison?${params.toString()}`);
 }
 
 /**

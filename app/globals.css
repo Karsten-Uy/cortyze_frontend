@@ -212,3 +212,27 @@ textarea {
     flex-basis: auto !important;
   }
 }
+
+/* Compare page — column rows (demo headers + takeaways) collapse to
+   single column on mobile. Region rows tighten the label width and
+   shrink the bars' gap so the score numbers don't get pushed off. */
+@media (max-width: 640px) {
+  .cortyze-compare-row {
+    flex-direction: column !important;
+  }
+  .cortyze-compare-region-row > div:first-child {
+    width: 70px !important;
+    font-size: 11px !important;
+  }
+  .cortyze-compare-region-row > div:nth-child(2) {
+    gap: 6px !important;
+  }
+}
+
+/* Compare page media thumbnail — hover the link to surface the play
+   badge and dim the still. The overlay div sits absolutely over the
+   thumbnail's background-image. */
+.cortyze-media-link:hover .cortyze-media-overlay,
+.cortyze-media-link:focus-visible .cortyze-media-overlay {
+  opacity: 1;
+}
