@@ -87,13 +87,26 @@ export function LabBench({
         // set (e.g. Edit & re-score round-trip), restore that exact
         // sample; otherwise auto-select the first one so the Run
         // button is usable on first paint.
-        setSelectedDemo((current) => {
-          if (current) return current;
-          const desired = initialValues?.demoId
-            ? list.find((d) => d.demo_id === initialValues.demoId)
-            : null;
-          return desired ?? list[0] ?? null;
-        });
+        const auto = initialValues?.demoId
+          ? list.find((d) => d.demo_id === initialValues.demoId) ?? list[0]
+          : list[0];
+        if (!auto) return;
+        setSelectedDemo((current) => current ?? auto);
+        // Auto-pre-fill the form with the chosen demo's defaults
+        // UNLESS this is an Edit & re-score round-trip (in which case
+        // initialValues already carries the previous run's content
+        // and we shouldn't clobber it).
+        const isEditRoundTrip = Boolean(
+          initialValues?.name ||
+            initialValues?.brief ||
+            initialValues?.caption,
+        );
+        if (!isEditRoundTrip) {
+          setName(auto.form_defaults.name);
+          setGoalKey(auto.form_defaults.goal);
+          setBrief(auto.form_defaults.brief);
+          setCaption(auto.form_defaults.caption);
+        }
       })
       .catch(() => {
         // Demos are optional. If /demos fails, we just hide the row.
@@ -101,8 +114,8 @@ export function LabBench({
     return () => {
       cancelled = true;
     };
-    // initialValues.demoId is read once at mount; subsequent changes
-    // shouldn't blow away a user's manual selection.
+    // initialValues is read once at mount; subsequent changes
+    // shouldn't blow away a user's manual edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -204,32 +217,37 @@ export function LabBench({
           />
         </Field>
 
-        <Field label="What are you optimizing for?">
-          <div style={{ position: "relative" }}>
-            <select
-              value={goalKey}
-              onChange={(e) => setGoalKey(e.target.value as GoalKey)}
-              style={{ ...inputStyle, appearance: "none", paddingRight: 32 }}
-              disabled={submitting}
-            >
-              {GOAL_OPTIONS.map((g) => (
-                <option key={g.key} value={g.key}>
-                  {g.display}
-                </option>
-              ))}
-            </select>
+        <Field label="Optimizing for">
+          {/* Read-only in the demo build: each sample is paired with
+              a fixed goal that drives its suggestions. Surfacing it
+              as a coral badge instead of a dropdown signals "this is
+              part of the sample, not your choice." */}
+          <div
+            style={{
+              ...inputStyle,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              color: "var(--ink)",
+            }}
+          >
             <span
               style={{
-                position: "absolute",
-                right: 14,
-                top: "50%",
-                transform: "translateY(-50%)",
-                pointerEvents: "none",
+                display: "inline-block",
                 fontSize: 10,
-                color: "var(--ink-3)",
+                fontWeight: 500,
+                letterSpacing: "0.3px",
+                textTransform: "uppercase",
+                padding: "3px 10px",
+                borderRadius: 20,
+                background: "var(--coral-tint)",
+                color: "var(--coral)",
               }}
             >
-              ▾
+              {GOAL_OPTIONS.find((g) => g.key === goalKey)?.display ?? goalKey}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--ink-3)" }}>
+              chosen for this sample
             </span>
           </div>
         </Field>

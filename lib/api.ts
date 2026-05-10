@@ -114,6 +114,12 @@ export type SuggestionPlan = {
   status: Status;
   regions: RegionScore[];
   suggestions: Suggestion[];
+  // Per-region activation samples across the analyzed clip, sampled
+  // at 1 Hz (array index = seconds). `null` for runs without
+  // timeseries — currently only the 3 demo samples carry this. Drives
+  // the per-region sparklines on the Results screen; absence makes
+  // BreakdownRow fall back to the static bar.
+  region_timeseries?: Record<RegionKey, number[]> | null;
 };
 
 export type RunRecord = {

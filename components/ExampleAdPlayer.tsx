@@ -11,34 +11,13 @@
 //   - Anything else (R2 MP4, etc.) → native <video> looping the
 //     [start, end] segment.
 
+import { extractYouTubeId, formatMSS } from "@/lib/format";
+
 type Props = {
   src: string;
   startS: number;
   endS: number;
 };
-
-function formatMSS(s: number): string {
-  const total = Math.max(0, Math.floor(s));
-  const m = Math.floor(total / 60);
-  const sec = total % 60;
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
-
-function youtubeId(url: string): string | null {
-  // youtu.be/<id> | youtube.com/watch?v=<id> | youtube.com/embed/<id> |
-  // youtube.com/shorts/<id>. Returns null when none match.
-  const patterns = [
-    /youtu\.be\/([A-Za-z0-9_-]{6,})/,
-    /[?&]v=([A-Za-z0-9_-]{6,})/,
-    /youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/,
-    /youtube\.com\/shorts\/([A-Za-z0-9_-]{6,})/,
-  ];
-  for (const re of patterns) {
-    const m = url.match(re);
-    if (m) return m[1];
-  }
-  return null;
-}
 
 // Caps the embed at 280×158 on wide screens but lets it shrink to fill
 // the available width when the suggestion card wraps onto a narrow
@@ -46,7 +25,7 @@ function youtubeId(url: string): string | null {
 const PLAYER_MAX_WIDTH = 280;
 
 export function ExampleAdPlayer({ src, startS, endS }: Props) {
-  const ytId = youtubeId(src);
+  const ytId = extractYouTubeId(src);
   const caption = (
     <div
       className="mono"

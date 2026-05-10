@@ -25,6 +25,10 @@ export default function CortyzePage() {
   const [view, setView] = useState<View>("bench");
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<SuggestionPlan | null>(null);
+  // Source clip URL for the active run — fed to the Results screen's
+  // hero video player. Demo runs persist `media_url` from the demo
+  // JSON; real uploads round-trip the R2 presigned URL via /runs/:id.
+  const [currentMediaUrl, setCurrentMediaUrl] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // Pre-fills the LabBench form when the user clicks "Edit & re-score"
   // on the Results view. Cleared after a successful submit so the next
@@ -66,6 +70,17 @@ export default function CortyzePage() {
   function handleAnalysisComplete(plan: SuggestionPlan) {
     setCurrentPlan(plan);
     setView("results");
+    // Best-effort: pull the run record so the hero video player on
+    // Results has its `media_url`. Failure is fine — Results just
+    // hides the hero when mediaUrl is null.
+    if (currentRunId) {
+      getRun(currentRunId)
+        .then((record) => setCurrentMediaUrl(record.media_url))
+        .catch((err) => {
+          console.warn("could not fetch media_url for hero player:", err);
+          setCurrentMediaUrl(null);
+        });
+    }
   }
 
   function handleAnalysisFailed(message: string) {
@@ -154,7 +169,11 @@ export default function CortyzePage() {
           />
         )}
         {view === "results" && currentPlan && (
-          <Results plan={currentPlan} onEdit={handleEdit} />
+          <Results
+            plan={currentPlan}
+            mediaUrl={currentMediaUrl}
+            onEdit={handleEdit}
+          />
         )}
         {view === "results" && !currentPlan && (
           <EmptyResultsHint onEdit={handleEdit} />

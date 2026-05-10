@@ -229,6 +229,28 @@ textarea {
   }
 }
 
+/* Results screen ScoreCard — narrow 220px column on desktop. On
+   mobile the card goes full-width and the brain pivots to sit beside
+   the score header instead of below it, so the card doesn't leave
+   half its width empty. The bottom RegionScoreList still spans full
+   width under both. */
+@media (max-width: 640px) {
+  .cortyze-score-card {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+  .cortyze-score-card .cortyze-score-top {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  .cortyze-score-card .cortyze-score-brain {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+  }
+}
+
 /* Compare page media thumbnail — hover the link to surface the play
    badge and dim the still. The overlay div sits absolutely over the
    thumbnail's background-image. */
