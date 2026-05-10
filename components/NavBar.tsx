@@ -62,8 +62,18 @@ export function NavBar({
             fontWeight: 500,
             color: "var(--ink)",
             letterSpacing: "-0.01em",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
           }}
         >
+          <img
+            src="/cortyze-logo.png"
+            alt=""
+            width={22}
+            height={22}
+            style={{ display: "block" }}
+          />
           cortyze
         </div>
       </div>

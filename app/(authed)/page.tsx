@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePostHog } from "posthog-js/react";
 
 import { AnalysisAnimation } from "@/components/AnalysisAnimation";
 import { Compare } from "@/components/Compare";
@@ -22,6 +23,7 @@ import {
 type View = "bench" | "analyzing" | "results" | "compare";
 
 export default function CortyzePage() {
+  const posthog = usePostHog();
   const [view, setView] = useState<View>("bench");
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<SuggestionPlan | null>(null);
@@ -55,6 +57,13 @@ export default function CortyzePage() {
       // Drop any "Edit & re-score" pre-fill now that a new run has
       // been kicked off — next visit to the bench starts blank.
       setBenchInitialValues(null);
+      posthog?.capture("demo_run_started", {
+        run_id,
+        goal: input.goal,
+        kind,
+        has_brief: Boolean(input.brief),
+        is_demo: Boolean(input.demoId),
+      });
       setView("analyzing");
     } catch (err) {
       const msg =
@@ -69,6 +78,7 @@ export default function CortyzePage() {
 
   function handleAnalysisComplete(plan: SuggestionPlan) {
     setCurrentPlan(plan);
+    posthog?.capture("demo_run_completed", { run_id: currentRunId });
     setView("results");
     // Best-effort: pull the run record so the hero video player on
     // Results has its `media_url`. Failure is fine — Results just

@@ -8,6 +8,28 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Reverse-proxy PostHog through this app's own origin so ad blockers
+  // don't intercept the requests. Order matters — the /static rewrite
+  // must come BEFORE the catch-all so assets aren't routed to the
+  // events host. Also requires skipTrailingSlashRedirect, otherwise
+  // POSTs to /ingest/e/ get 308'd to /ingest/e and lose their body.
+  async rewrites() {
+    return [
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://us-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://us.i.posthog.com/:path*",
+      },
+      {
+        source: "/ingest/decide",
+        destination: "https://us.i.posthog.com/decide",
+      },
+    ];
+  },
+  skipTrailingSlashRedirect: true,
 };
 
 export default nextConfig;

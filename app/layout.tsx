@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono, Playfair_Display } from "next/font/google";
+import { CSPostHogProvider } from "./providers";
+import PostHogPageView from "@/components/posthog-page-view";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -21,7 +23,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cortyze",
+  title: "Cortyze Demo",
   description:
     "Score ads on six cognitive dimensions before you ship. Memory, emotion, attention, language, faces, reward.",
 };
@@ -38,7 +40,10 @@ export default function RootLayout({
           extensions (Grammarly, LastPass, etc.) injecting attributes into
           <body> before React hydrates. It only suppresses one level deep. */}
       <body className="min-h-full" suppressHydrationWarning>
-        {children}
+        <CSPostHogProvider>
+          <PostHogPageView />
+          {children}
+        </CSPostHogProvider>
       </body>
     </html>
   );
